@@ -5,18 +5,21 @@ const dayjs = require('dayjs');
 module.exports = (db, CalorieModel) => {
   const router = express.Router();
 
-  
   const Calorie = new CalorieModel(db);
 
-  function toDateStr(ts = null) {
+  function toDateStr(ts = null)
+  {
     return ts ? dayjs(ts).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
   }
 
+
   // POST /api/calories/add
   router.post('/add', async (req, res) => {
-    try {
+    try
+    {
       const { userId, amount, timestamp } = req.body;
-      if (typeof userId !== 'number' || typeof amount !== 'number') {
+      if (typeof userId !== 'number' || typeof amount !== 'number')
+      {
         return res.status(400).json({ error: 'userId and amount must be numbers' });
       }
 
@@ -27,7 +30,9 @@ module.exports = (db, CalorieModel) => {
       const row = await Calorie.getTodayTotal(userId, today);
 
       res.json({ message: 'Calorie added', totalToday: row.total });
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error(err);
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -35,7 +40,8 @@ module.exports = (db, CalorieModel) => {
 
   // GET /api/calories/today
   router.get('/today', async (req, res) => {
-    try {
+    try
+    {
       const userId = parseInt(req.query.userId, 10);
       if (Number.isNaN(userId)) return res.status(400).json({ error: 'userId query parameter required' });
 
@@ -51,13 +57,16 @@ module.exports = (db, CalorieModel) => {
 
   // GET /api/calories
   router.get('/', async (req, res) => {
-    try {
+    try
+    {
       const userId = parseInt(req.query.userId, 10);
-      if (Number.isNaN(userId)) return res.status(400).json({ error: 'userId query parameter required' });
+      if (Number.isNaN(userId))
+        return res.status(400).json({ error: 'userId query parameter required' });
 
       const date = req.query.date;
 
-      if (date) {
+      if (date)
+      {
         const entries = await Calorie.getEntriesForDate(userId, date);
         const totalRow = await Calorie.getTodayTotal(userId, date);
 
@@ -66,7 +75,9 @@ module.exports = (db, CalorieModel) => {
 
       const entries = await Calorie.getRecentEntries(userId);
       res.json({ entries });
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error(err);
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -75,20 +86,29 @@ module.exports = (db, CalorieModel) => {
 
   // DELETE /api/calories/:id
   router.delete('/:id', async (req, res) => {
-    try {
+    try
+    {
       const id = parseInt(req.params.id, 10);
-      if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+
+      if (Number.isNaN(id))
+        return res.status(400).json({ error: 'Invalid id' });
 
       const entry = await Calorie.getById(id);
-      if (!entry) return res.status(404).json({ error: 'Entry not found' });
+
+      if (!entry)
+        return res.status(404).json({ error: 'Entry not found' });
 
       await Calorie.delete(id);
 
       const today = toDateStr(entry.timestamp);
+
       const row = await Calorie.getTodayTotal(entry.userId, today);
 
       res.json({ message: 'Entry deleted', totalToday: row.total });
-    } catch (err) {
+
+    }
+    catch (err)
+    {
       console.error(err);
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -97,8 +117,11 @@ module.exports = (db, CalorieModel) => {
 
   // GET /api/calories/history
   router.get('/history', async (req, res) => {
-    try {
+    try
+    {
+      // Extract and validate query parameters
       const userId = parseInt(req.query.userId, 10);
+
       const days = parseInt(req.query.days || '7', 10);
 
       if (Number.isNaN(userId)) return res.status(400).json({ error: 'userId required' });
@@ -107,7 +130,10 @@ module.exports = (db, CalorieModel) => {
       const rows = await Calorie.getHistory(userId, days);
 
       res.json({ days: rows });
-    } catch (err) {
+    }
+    
+    catch (err)
+    {
       console.error(err);
       res.status(500).json({ error: 'Internal server error' });
     }

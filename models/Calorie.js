@@ -1,10 +1,13 @@
-class Calorie {
-  constructor(db) {
+class Calorie
+{
+  constructor(db)
+  {
     this.db = db;
   }
 
   // Add a calorie entry
-  add(userId, amount, timestamp) {
+  add(userId, amount, timestamp)
+  {
     return this.db.run(
       `INSERT INTO calories (user_id, amount, timestamp) VALUES (?, ?, ?)`,
       [userId, amount, timestamp]
@@ -12,7 +15,8 @@ class Calorie {
   }
 
   // Get total calories for a user on a specific date
-  getTodayTotal(userId, dateStr) {
+  getTodayTotal(userId, dateStr)
+  {
     return this.db.get(
       `SELECT COALESCE(SUM(amount), 0) AS total FROM calories WHERE user_id = ? AND date(timestamp) = ?`,
       [userId, dateStr]
@@ -20,7 +24,8 @@ class Calorie {
   }
 
   // Get calorie entries for a user on a specific date
-  getEntriesForDate(userId, dateStr) {
+  getEntriesForDate(userId, dateStr)
+  {
     return this.db.all(
       `SELECT id, user_id AS userId, amount, timestamp
        FROM calories
@@ -32,7 +37,8 @@ class Calorie {
 
 
   // Get recent calorie entries for a user
-  getRecentEntries(userId) {
+  getRecentEntries(userId)
+  {
     return this.db.all(
       `SELECT id, user_id AS userId, amount, timestamp
        FROM calories
@@ -44,12 +50,14 @@ class Calorie {
   }
 
   // Delete a calorie entry by ID
-  delete(id) {
+  delete(id)
+  {
     return this.db.run(`DELETE FROM calories WHERE id = ?`, [id]);
   }
 
   // Get a calorie entry by ID
-  getById(id) {
+  getById(id)
+  {
     return this.db.get(
       `SELECT id, user_id AS userId, amount, timestamp
        FROM calories
@@ -59,7 +67,8 @@ class Calorie {
   }
 
   // Get calorie history for a user over the past N days
-  getHistory(userId, days) {
+  getHistory(userId, days)
+  {
     return this.db.all(
       `SELECT date(timestamp) AS date, COALESCE(SUM(amount),0) AS total
        FROM calories
@@ -71,6 +80,7 @@ class Calorie {
     );
   }
 }
+
 
 // Export the Calorie class
 module.exports = Calorie;
