@@ -5,6 +5,9 @@ import { Input } from './ui/input';
 import { useState } from 'react';
 import { useApp, DailyMealLog, LoggedMeal } from '../context/AppContext';
 import { toast } from 'sonner';
+import { useEffect } from "react";
+import axios from "axios";
+const API_URL = "http://localhost:5050/api/meals";
 
 interface TrackMealsProps {
   onNavigate: (screen: any) => void;
@@ -34,7 +37,14 @@ export function TrackMeals({ onNavigate }: TrackMealsProps) {
     };
   };
 
-  const [todayMeals, setTodayMeals] = useState<DailyMealLog>(getTodayLog());
+  const [todayMeals, setTodayMeals] = useState<DailyMealLog>({
+  date: getCurrentDateString(),
+  breakfast: [],
+  lunch: [],
+  dinner: [],
+  snacks: []
+});
+
   
   // Input states for each meal type
   const [breakfastInput, setBreakfastInput] = useState({ name: '', calories: '' });
@@ -47,6 +57,14 @@ export function TrackMeals({ onNavigate }: TrackMealsProps) {
   const [showLunchInput, setShowLunchInput] = useState(false);
   const [showDinnerInput, setShowDinnerInput] = useState(false);
   const [showSnacksInput, setShowSnacksInput] = useState(false);
+
+  useEffect(() => {
+  fetchMealsForUser();
+}, []);
+
+useEffect(() => {
+  fetchMealsForUser();
+}, [selectedDay]);
 
   // Update meals when date changes
   const handleDateChange = (date: number) => {
@@ -122,10 +140,62 @@ export function TrackMeals({ onNavigate }: TrackMealsProps) {
       .reduce((sum, meal) => sum + meal.calories, 0);
   };
 
-  const handleSave = () => {
-    saveDailyMealLog(todayMeals);
-    toast.success('Meals saved successfully!');
-  };
+    const handleSave = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Not logged in");
+      return;
+    }
+
+    const res = await axios.post(API_URL, todayMeals, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    console.log("Saved:", res.data);
+    toast.success("Meals saved permanently");
+
+  } catch (error) {
+    console.error("SAVE FAILED:", error);
+    toast.error("Save failed");
+  }
+};
+
+
+    const fetchMealsForUser = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
+    const res = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const dateStr = getCurrentDateString();
+    const todayData = res.data.find((m: any) => m.date === dateStr);
+
+    setTodayMeals(todayData || {
+      date: dateStr,
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+      snacks: []
+    });
+
+  } catch (err) {
+    console.error("FETCH ERROR:", err);
+  }
+};
 
   return (
     <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">

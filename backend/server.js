@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
-
 const app = express();
 
 // Connect DB
@@ -18,7 +17,7 @@ app.use("/api/meals", require("./routes/mealRoutes"));
 
 // Test route (IMPORTANT FOR DEBUG)
 app.get("/", (req, res) => {
-  res.send("Backend is working ✅");
+  res.send("Backend is working ");
 });
 
 app.listen(5050, () => {
