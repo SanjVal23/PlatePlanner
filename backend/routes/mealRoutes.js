@@ -12,11 +12,19 @@ router.post("/", auth, async (req, res) => {
 
     if (!date) return res.status(400).json({ error: "Date is required" });
 
-    const doc = await Meal.findOneAndUpdate(
-      { userId, date },
-      { breakfast, lunch, dinner, snacks },
-      { upsert: true, new: true }
-    );
+   const doc = await Meal.findOneAndUpdate(
+  { userId, date },
+  { 
+    userId,
+    date,
+    breakfast,
+    lunch,
+    dinner,
+    snacks
+  },
+  { upsert: true, new: true }
+);
+
 
     res.json(doc);
   } catch (err) {
