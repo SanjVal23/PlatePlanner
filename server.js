@@ -11,7 +11,7 @@ const CalorieModel = require('./models/Calorie');
 
 
 const caloriesRouter = require('./routes/calories');
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 
 async function start()
