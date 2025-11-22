@@ -58,9 +58,38 @@ export function TrackMeals({ onNavigate }: TrackMealsProps) {
   const [showDinnerInput, setShowDinnerInput] = useState(false);
   const [showSnacksInput, setShowSnacksInput] = useState(false);
 
-  useEffect(() => {
-  fetchMealsForUser();
-}, []);
+
+   const fetchMealsForUser = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
+    const res = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const dateStr = getCurrentDateString();
+    const todayData = res.data.find((m: any) => m.date === dateStr);
+
+    setTodayMeals(todayData || {
+      date: dateStr,
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+      snacks: []
+    });
+
+  } catch (err) {
+    console.error("FETCH ERROR:", err);
+  }
+};
+
 
 useEffect(() => {
   fetchMealsForUser();
@@ -166,37 +195,7 @@ useEffect(() => {
 };
 
 
-    const fetchMealsForUser = async () => {
-  try {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No token found");
-      return;
-    }
-
-    const res = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const dateStr = getCurrentDateString();
-    const todayData = res.data.find((m: any) => m.date === dateStr);
-
-    setTodayMeals(todayData || {
-      date: dateStr,
-      breakfast: [],
-      lunch: [],
-      dinner: [],
-      snacks: []
-    });
-
-  } catch (err) {
-    console.error("FETCH ERROR:", err);
-  }
-};
-
+   
   return (
     <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
