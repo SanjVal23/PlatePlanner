@@ -3,6 +3,8 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { LoginScreen } from './components/LoginPage';
 import { OnboardingScreen } from './components/OnboardingScreen';
+import { CheckEmailScreen } from './components/CheckEmailScreen';
+import { VerifyScreen } from './components/VerifyScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { CreateAccountScreen } from './components/CreateAccountScreen';
 import { HomePage } from './components/HomePage';
@@ -29,6 +31,8 @@ const AppContent: React.FC = () => {
         <Route path="/login" element={<LoginScreen onNavigate={handleNavigate} />} />
         <Route path="/create-account" element={<CreateAccountScreen onNavigate={handleNavigate} />} />
         <Route path="/onboarding" element={<OnboardingScreen onNavigate={handleNavigate} />} />
+        <Route path="/check-email" element={<CheckEmailScreen onNavigate={handleNavigate} />} />
+        <Route path="/verify/:token" element={<VerifyScreen />} />
         <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
         <Route path="/recipe" element={<RecipePage onNavigate={handleNavigate} />} />
         <Route path="/recipe-detail" element={<RecipeDetail onNavigate={handleNavigate} />} />
