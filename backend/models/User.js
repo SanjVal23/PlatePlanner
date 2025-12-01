@@ -4,6 +4,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+<<<<<<< HEAD
   firstName: { type: String },
   lastName: { type: String },
   allergies: { type: [String], default: [] },
@@ -15,6 +16,10 @@ const userSchema = new mongoose.Schema({
   calorieGoal: { type: Number }
 }, {
   timestamps: true
+=======
+  isVerified: { type: Boolean, default: false },
+  verificationToken: { type: String }
+>>>>>>> Authentication
 });
 
 module.exports = mongoose.model("User", userSchema);

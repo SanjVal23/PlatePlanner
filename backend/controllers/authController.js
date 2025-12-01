@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 
 exports.register = async (req, res) => {
   try {
@@ -15,25 +17,58 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Create verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // Create user (not verified yet)
     const newUser = new User({
       name: name || `${firstName} ${lastName}`,
       email,
       password: hashedPassword,
+<<<<<<< HEAD
       firstName: firstName || name,
       lastName: lastName || '',
       allergies: [],
       dietaryRestrictions: []
+=======
+      isVerified: false,
+      verificationToken
+>>>>>>> Authentication
     });
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { userId: newUser._id }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: "7d" }
-    );
+    // Prepare transporter.
+    // If SMTP env vars are provided use them (e.g. SendGrid), otherwise fall back to Ethereal for dev.
+    let transporter;
+    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+    if (hasSmtp) {
+      const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+      const smtpSecure = (process.env.SMTP_SECURE === 'true') || smtpPort === 465;
+      console.log('Using real SMTP ->', process.env.SMTP_HOST, smtpPort, 'secure=', smtpSecure);
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+    } else {
+      console.log('No SMTP settings found, using Ethereal test account for email previews');
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+    }
 
+<<<<<<< HEAD
     res.status(201).json({
       token,
       userId: newUser._id,
@@ -46,10 +81,63 @@ exports.register = async (req, res) => {
         dietaryRestrictions: newUser.dietaryRestrictions
       }
     });
+=======
+    // Build verification link to frontend verify page
+    const frontendBase = process.env.FRONTEND_URL || "http://localhost:3000";
+    const verifyLink = `${frontendBase}/verify/${verificationToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'no-reply@plateplanner.local',
+      to: email,
+      subject: 'Plate Planner - Verify your email',
+      text: `Hi ${name || ''},\n\nPlease verify your email by clicking the link: ${verifyLink}\n\nIf you did not sign up, ignore this email.`,
+      html: `<p>Hi ${name || ''},</p><p>Please verify your email by clicking the link below:</p><p><a href="${verifyLink}">Verify your account</a></p>`
+    };
+
+    let info;
+    let preview;
+    try {
+      info = await transporter.sendMail(mailOptions);
+      if (nodemailer.getTestMessageUrl && info) {
+        preview = nodemailer.getTestMessageUrl(info);
+        console.log('Preview email URL:', preview);
+      }
+    } catch (emailErr) {
+      console.error('Error sending verification email:', emailErr);
+      const responsePayload = { message: 'User created but verification email failed to send.' };
+      if (preview) responsePayload.previewUrl = preview;
+      if (process.env.NODE_ENV !== 'production') responsePayload.emailError = emailErr.message;
+      return res.status(201).json(responsePayload);
+    }
+
+    const responsePayload = { message: 'User created. Check your email for verification.' };
+    if (preview) responsePayload.previewUrl = preview;
+
+    res.status(201).json(responsePayload);
+>>>>>>> Authentication
 
   } catch (error) {
     console.error("REGISTER ERROR:", error);
     res.status(500).json({ error: "Error creating user" });
+  }
+};
+
+exports.verify = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ error: 'Missing token' });
+
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) return res.status(400).json({ error: 'Invalid token or user not found' });
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.json({ message: 'Email verified successfully' });
+  } catch (error) {
+    console.error('VERIFY ERROR:', error);
+    res.status(500).json({ error: 'Verification failed' });
   }
 };
 
@@ -69,6 +157,11 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    // Prevent login if email not verified
+    if (!user.isVerified) {
+      return res.status(401).json({ error: 'Email not verified. Please check your inbox.' });
     }
 
     const token = jwt.sign(

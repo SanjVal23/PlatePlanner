@@ -16,6 +16,8 @@ export function CreateAccountScreen({ onNavigate }: CreateAccountScreenProps) {
     username: '',
     password: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
 const handleCreateAccount = async () => {
   if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
@@ -24,6 +26,8 @@ const handleCreateAccount = async () => {
   }
 
   try {
+    setLoading(true);
+    setErrorMessage(null);
     const response = await fetch("http://localhost:5050/api/auth/register", {
       method: "POST",
       headers: {
@@ -37,15 +41,23 @@ const handleCreateAccount = async () => {
         lastName: formData.lastName
       })
     });
-
-    const data = await response.json();
+    const text = await response.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch (e) { data = { message: text }; }
 
     if (!response.ok) {
-      throw new Error(data.error || "Account creation failed");
+      const msg = data.error || data.message || 'Account creation failed';
+      throw new Error(msg);
     }
 
-    localStorage.clear();
+    // If backend returned an Ethereal preview URL (dev), save it so CheckEmailScreen can show it
+    if (data.previewUrl) {
+      try { localStorage.setItem('emailPreviewUrl', data.previewUrl); } catch (e) { /* ignore */ }
+    } else {
+      try { localStorage.removeItem('emailPreviewUrl'); } catch (e) { /* ignore */ }
+    }
 
+<<<<<<< HEAD
     localStorage.setItem("token", data.token);
     localStorage.setItem("userId", data.userId);
     
@@ -64,10 +76,21 @@ const handleCreateAccount = async () => {
     });
 
     onNavigate("onboarding");
+=======
+    // Do not auto-login. Prompt user to check their email for verification link.
+    onNavigate("check-email");
+>>>>>>> Authentication
 
   } catch (error: any) {
-    console.error(error);
-    alert(error.message || "Account creation failed");
+    console.error('Register error:', error);
+    // Network error (server unreachable) often gives 'Failed to fetch'
+    if (error.message && error.message.toLowerCase().includes('failed to fetch')) {
+      setErrorMessage('Cannot reach backend. Make sure the backend server is running at http://localhost:5050');
+    } else {
+      setErrorMessage(error.message || 'Account creation failed');
+    }
+  } finally {
+    setLoading(false);
   }
 };
 
@@ -155,12 +178,16 @@ const handleCreateAccount = async () => {
           />
         </div>
       </div>
+      {errorMessage && (
+        <div className="mt-4 text-sm text-red-600">{errorMessage}</div>
+      )}
 
       <button
         onClick={handleCreateAccount}
-        className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white py-6 rounded-xl shadow-lg mt-6 transition-colors"
+        disabled={loading}
+        className={`w-full ${loading ? 'opacity-60' : ''} bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white py-6 rounded-xl shadow-lg mt-6 transition-colors`}
       >
-        Create Account
+        {loading ? 'Creating account...' : 'Create Account'}
       </button>
       
       <div className="text-center mt-6 text-sm text-gray-600">
