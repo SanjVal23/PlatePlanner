@@ -4,6 +4,9 @@ const connectDB = require("./config/db");
 const cors = require("cors");
 const app = express();
 
+// Connect DB
+connectDB();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -16,18 +19,9 @@ app.use("/api/meal-plans", require("./routes/mealPlanRoutes"));
 
 // Test route
 app.get("/", (req, res) => {
-        res.send("Backend is working");
+    res.send("Backend is working");
 });
 
-(async () => {
-    try {
-        await connectDB();
-        const PORT = process.env.PORT || 5050;
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
-    } catch (err) {
-        console.error('Failed to start server due to DB error:', err.message);
-        process.exit(1);
-    }
-})();
+app.listen(5050, () => {
+    console.log("Server running on port 5050");
+});
