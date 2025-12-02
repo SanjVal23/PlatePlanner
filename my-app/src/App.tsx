@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-route
 import { LoginScreen } from './components/LoginPage';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { CheckEmailScreen } from './components/CheckEmailScreen';
-import { VerifyScreen } from './components/VerifyScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { CreateAccountScreen } from './components/CreateAccountScreen';
 import { HomePage } from './components/HomePage';
@@ -15,6 +14,7 @@ import { WeeklySummary } from './components/WeeklySummary';
 import { ProfilePage } from './components/ProfilePage';
 import { CommunityForum } from './components/CommunityForum';
 import { PlatePlanner } from './components/PlatePlanner';
+import Verify from "./components/Verify"; 
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +32,6 @@ const AppContent: React.FC = () => {
         <Route path="/create-account" element={<CreateAccountScreen onNavigate={handleNavigate} />} />
         <Route path="/onboarding" element={<OnboardingScreen onNavigate={handleNavigate} />} />
         <Route path="/check-email" element={<CheckEmailScreen onNavigate={handleNavigate} />} />
-        <Route path="/verify/:token" element={<VerifyScreen />} />
         <Route path="/home" element={<HomePage onNavigate={handleNavigate} />} />
         <Route path="/recipe" element={<RecipePage onNavigate={handleNavigate} />} />
         <Route path="/recipe-detail" element={<RecipeDetail onNavigate={handleNavigate} />} />
@@ -41,6 +40,8 @@ const AppContent: React.FC = () => {
         <Route path="/profile" element={<ProfilePage onNavigate={handleNavigate} />} />
         <Route path="/community" element={<CommunityForum onNavigate={handleNavigate} />} />
         <Route path="/plate-planner" element={<PlatePlanner onNavigate={handleNavigate} />} />
+        <Route path="/verify/:token" element={<Verify />} />
+
       </Routes>
     </div>
   );

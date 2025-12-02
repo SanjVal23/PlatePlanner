@@ -1,160 +1,104 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const sendEmail = require("../utils/email");
 
+// ---------------- REGISTER ----------------
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Prevent duplicate users
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
-    }
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ error: "Email already in use" });
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 10);
 
-    // Create verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const token = crypto.randomBytes(32).toString("hex");
 
-    // Create user (not verified yet)
-    const newUser = new User({
+    const user = new User({
       name,
       email,
-      password: hashedPassword,
+      password: hashed,
       isVerified: false,
-      verificationToken
+      verificationToken: token,
+      verificationExpires: Date.now() + 60 * 60 * 1000 // 1 hr
     });
 
-    await newUser.save();
+    await user.save();
 
-    // Prepare transporter.
-    // If SMTP env vars are provided use them (e.g. SendGrid), otherwise fall back to Ethereal for dev.
-    let transporter;
-    const hasSmtp = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-    if (hasSmtp) {
-      const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-      const smtpSecure = (process.env.SMTP_SECURE === 'true') || smtpPort === 465;
-      console.log('Using real SMTP ->', process.env.SMTP_HOST, smtpPort, 'secure=', smtpSecure);
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: smtpPort,
-        secure: smtpSecure,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      });
-    } else {
-      console.log('No SMTP settings found, using Ethereal test account for email previews');
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        }
-      });
-    }
+    // Build verification link
+    const verifyURL = `${process.env.FRONTEND_URL}/verify/${token}`;
 
-    // Build verification link to frontend verify page
-    const frontendBase = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verifyLink = `${frontendBase}/verify/${verificationToken}`;
+    const html = `
+      <h2>Verify Your PlatePlanner Account</h2>
+      <p>Click the link below to activate your account:</p>
+      <a href="${verifyURL}" target="_blank">Verify Account</a>
+    `;
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'no-reply@plateplanner.local',
+    const { previewUrl } = await sendEmail({
       to: email,
-      subject: 'Plate Planner - Verify your email',
-      text: `Hi ${name || ''},\n\nPlease verify your email by clicking the link: ${verifyLink}\n\nIf you did not sign up, ignore this email.`,
-      html: `<p>Hi ${name || ''},</p><p>Please verify your email by clicking the link below:</p><p><a href="${verifyLink}">Verify your account</a></p>`
-    };
+      subject: "Verify your PlatePlanner account",
+      html
+    });
 
-    let info;
-    let preview;
-    try {
-      info = await transporter.sendMail(mailOptions);
-      if (nodemailer.getTestMessageUrl && info) {
-        preview = nodemailer.getTestMessageUrl(info);
-        console.log('Preview email URL:', preview);
-      }
-    } catch (emailErr) {
-      console.error('Error sending verification email:', emailErr);
-      const responsePayload = { message: 'User created but verification email failed to send.' };
-      if (preview) responsePayload.previewUrl = preview;
-      if (process.env.NODE_ENV !== 'production') responsePayload.emailError = emailErr.message;
-      return res.status(201).json(responsePayload);
-    }
-
-    const responsePayload = { message: 'User created. Check your email for verification.' };
-    if (preview) responsePayload.previewUrl = preview;
-
-    res.status(201).json(responsePayload);
-
+    res.json({
+      message: "User registered. Please check your email.",
+      previewUrl
+    });
   } catch (error) {
-    console.error("REGISTER ERROR:", error);
-    res.status(500).json({ error: "Error creating user" });
+    console.log(error);
+    res.status(500).json({ error: "Server error during registration" });
   }
 };
 
+// ---------------- VERIFY ----------------
 exports.verify = async (req, res) => {
   try {
-    const { token } = req.params;
-    if (!token) return res.status(400).json({ error: 'Missing token' });
+    const token = req.params.token;
 
-    const user = await User.findOne({ verificationToken: token });
-    if (!user) return res.status(400).json({ error: 'Invalid token or user not found' });
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
 
     user.isVerified = true;
     user.verificationToken = undefined;
+    user.verificationExpires = undefined;
     await user.save();
 
-    res.json({ message: 'Email verified successfully' });
+    // redirect to login page
+    return res.redirect(`${process.env.FRONTEND_URL}/setup`);
   } catch (error) {
-    console.error('VERIFY ERROR:', error);
-    res.status(500).json({ error: 'Verification failed' });
+    console.log(error);
+    res.status(500).json({ error: "Server error during verification" });
   }
 };
 
-
-
+// ---------------- LOGIN ----------------
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check user existence
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ error: "User not found" });
-    }
-
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    if (!user)
       return res.status(400).json({ error: "Invalid credentials" });
-    }
 
-    // Prevent login if email not verified
-    if (!user.isVerified) {
-      return res.status(401).json({ error: 'Email not verified. Please check your inbox.' });
-    }
+    if (!user.isVerified)
+      return res.status(403).json({ error: "Please verify your account first." });
 
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const match = await bcrypt.compare(password, user.password);
+    if (!match)
+      return res.status(400).json({ error: "Invalid credentials" });
 
     res.json({
-      token,
-      userId: user._id
+      message: "Login successful",
+      user
     });
-
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
-    res.status(500).json({ error: "Login failed" });
+    res.status(500).json({ error: "Server error during login" });
   }
 };
